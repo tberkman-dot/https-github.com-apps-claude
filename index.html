@@ -3,812 +3,524 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weekly Budget Tracker</title>
+  <title>Cross the Road</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #232636;
-      --border: #2e3147;
-      --accent: #6c63ff;
-      --accent2: #48c774;
-      --danger: #ff5c5c;
-      --warning: #ffdd57;
-      --text: #e0e2f0;
-      --muted: #7b7f9e;
-      --radius: 10px;
-    }
-
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px 16px;
-    }
-
-    h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .week-nav {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    .week-nav button {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      width: 32px; height: 32px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .week-nav button:hover { background: var(--border); }
-
-    /* Summary cards */
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 14px;
-      margin-bottom: 28px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-    }
-
-    .card-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .card-value {
-      font-size: 1.6rem;
-      font-weight: 700;
-    }
-
-    .card-value.green { color: var(--accent2); }
-    .card-value.red   { color: var(--danger); }
-    .card-value.yellow { color: var(--warning); }
-
-    /* Progress bar */
-    .progress-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      margin-bottom: 28px;
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      font-size: 0.85rem;
-    }
-
-    .bar-bg {
-      background: var(--surface2);
-      border-radius: 99px;
-      height: 10px;
-      overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      transition: width 0.4s ease, background 0.4s;
-    }
-
-    /* Budget setting */
-    .budget-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
-
-    .budget-row label {
-      font-size: 0.85rem;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    input[type="number"], input[type="text"], select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    input[type="number"]:focus,
-    input[type="text"]:focus,
-    select:focus {
-      border-color: var(--accent);
-    }
-
-    input[type="number"].budget-input { width: 120px; }
-
-    /* Add expense form */
-    .form-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 28px;
-    }
-
-    .form-card h2 {
-      font-size: 1rem;
-      margin-bottom: 14px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .form-row input[type="text"]  { flex: 2; min-width: 120px; }
-    .form-row input[type="number"] { flex: 1; min-width: 100px; }
-    .form-row select               { flex: 1; min-width: 120px; }
-
-    .btn {
-      padding: 8px 18px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-    .btn:hover { opacity: 0.88; }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-danger  { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 0.8rem; }
-
-    /* Category breakdown */
-    .section-title {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .categories {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 12px;
-      margin-bottom: 28px;
-    }
-
-    .cat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-
-    .cat-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .cat-name {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .cat-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-    }
-
-    .cat-amount {
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    /* Transactions list */
-    .transactions {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .tx-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .tx-header h2 { font-size: 1rem; }
-
-    .tx-list { list-style: none; }
-
-    .tx-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--border);
-      gap: 10px;
-      transition: background 0.1s;
-    }
-    .tx-item:last-child { border-bottom: none; }
-    .tx-item:hover { background: var(--surface2); }
-
-    .tx-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .tx-icon {
-      width: 36px; height: 36px;
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-
-    .tx-info { min-width: 0; }
-    .tx-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .tx-meta {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    .tx-amount {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--danger);
-      flex-shrink: 0;
-    }
-
-    .tx-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .empty-state {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    /* Day filter tabs */
-    .day-filter {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .day-tab {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 4px 10px;
-      border-radius: 99px;
-      font-size: 0.78rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .day-tab.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    /* Chart */
-    .chart-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 28px;
-    }
-
-    .bar-chart {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      height: 100px;
-      margin-top: 12px;
-    }
-
-    .bar-col {
-      flex: 1;
+      background: #0d1b2a;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      height: 100%;
-      justify-content: flex-end;
+      min-height: 100vh;
+      padding: 20px 16px 32px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #eee;
     }
 
-    .bar-col-bar {
-      width: 100%;
-      border-radius: 4px 4px 0 0;
-      background: var(--accent);
-      transition: height 0.4s ease;
-      min-height: 2px;
+    h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.5);
     }
 
-    .bar-col-label {
-      font-size: 0.7rem;
-      color: var(--muted);
+    .hud {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
-    @media (max-width: 500px) {
-      .form-row { flex-direction: column; }
-      .form-row input, .form-row select { width: 100%; }
+    .hud span {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      min-width: 60px;
+      text-align: center;
     }
+
+    canvas {
+      border: 3px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+      display: block;
+      max-width: 100%;
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.32);
+      letter-spacing: 0.03em;
+    }
+
+    /* Mobile D-pad */
+    .dpad {
+      display: none;
+      margin-top: 20px;
+      grid-template-columns: repeat(3, 58px);
+      grid-template-rows: repeat(2, 58px);
+      gap: 8px;
+    }
+
+    @media (pointer: coarse), (max-width: 700px) {
+      .dpad { display: grid; }
+    }
+
+    .dpad button {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.18);
+      color: #fff;
+      font-size: 1.6rem;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-user-select: none;
+      user-select: none;
+      transition: background 0.08s;
+    }
+
+    .dpad button:active { background: rgba(255,255,255,0.28); }
+    .d-up    { grid-column: 2; grid-row: 1; }
+    .d-left  { grid-column: 1; grid-row: 2; }
+    .d-down  { grid-column: 2; grid-row: 2; }
+    .d-right { grid-column: 3; grid-row: 2; }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>Weekly Budget</h1>
-  <div class="week-nav">
-    <button id="prevWeek" title="Previous week">&#8592;</button>
-    <span id="weekLabel"></span>
-    <button id="nextWeek" title="Next week">&#8594;</button>
-  </div>
+<h1>🐔 Cross the Road</h1>
+
+<div class="hud">
+  <span id="hLives">❤️❤️❤️</span>
+  <span id="hScore">Score: 0</span>
+  <span id="hLevel">Level 1</span>
+  <span id="hBest">Best: 0</span>
 </div>
 
-<!-- Budget setting -->
-<div class="budget-row">
-  <label for="budgetInput">Weekly budget:</label>
-  <input type="number" id="budgetInput" class="budget-input" min="0" step="1" placeholder="500" />
-  <button class="btn btn-primary" onclick="saveBudget()">Set</button>
-</div>
+<canvas id="c"></canvas>
 
-<!-- Summary -->
-<div class="summary">
-  <div class="card">
-    <div class="card-label">Budget</div>
-    <div class="card-value" id="summaryBudget">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Spent</div>
-    <div class="card-value red" id="summarySpent">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Remaining</div>
-    <div class="card-value green" id="summaryRemaining">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Daily Avg</div>
-    <div class="card-value" id="summaryAvg">$0</div>
-  </div>
-</div>
+<p class="hint">Arrow keys or WASD to move &nbsp;·&nbsp; R to restart</p>
 
-<!-- Progress bar -->
-<div class="progress-wrap">
-  <div class="progress-header">
-    <span id="progressLabel">0% of budget used</span>
-    <span id="progressDay"></span>
-  </div>
-  <div class="bar-bg">
-    <div class="bar-fill" id="progressBar" style="width:0%;background:var(--accent2)"></div>
-  </div>
-</div>
-
-<!-- Daily chart -->
-<div class="chart-wrap">
-  <div class="section-title">Spending by day</div>
-  <div class="bar-chart" id="barChart"></div>
-</div>
-
-<!-- Category breakdown -->
-<div class="section-title">By category</div>
-<div class="categories" id="categories"></div>
-
-<!-- Add expense -->
-<div class="form-card">
-  <h2>Add Expense</h2>
-  <div class="form-row">
-    <input type="text" id="expName" placeholder="Description" maxlength="60" />
-    <input type="number" id="expAmount" placeholder="Amount" min="0.01" step="0.01" />
-    <select id="expCat">
-      <option value="Food">🍔 Food</option>
-      <option value="Transport">🚌 Transport</option>
-      <option value="Shopping">🛍️ Shopping</option>
-      <option value="Entertainment">🎬 Entertainment</option>
-      <option value="Health">💊 Health</option>
-      <option value="Utilities">💡 Utilities</option>
-      <option value="Other">📦 Other</option>
-    </select>
-    <button class="btn btn-primary" onclick="addExpense()">Add</button>
-  </div>
-</div>
-
-<!-- Transactions -->
-<div class="transactions">
-  <div class="tx-header">
-    <h2>Transactions</h2>
-    <div class="day-filter" id="dayFilter"></div>
-  </div>
-  <ul class="tx-list" id="txList"></ul>
+<div class="dpad">
+  <button class="d-up"    ontouchstart="e(event);tap(0,-1)">▲</button>
+  <button class="d-left"  ontouchstart="e(event);tap(-1,0)">◀</button>
+  <button class="d-down"  ontouchstart="e(event);tap(0,1)">▼</button>
+  <button class="d-right" ontouchstart="e(event);tap(1,0)">▶</button>
 </div>
 
 <script>
-// ─── Constants ───────────────────────────────────────────────────────────────
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const FULL_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+// ── Setup ─────────────────────────────────────────────────────────────────────
+const CELL = 50, COLS = 13, ROWS = 13;
+const W = COLS * CELL, H = ROWS * CELL;
 
-const CATEGORIES = {
-  Food:          { emoji: '🍔', color: '#ff7043' },
-  Transport:     { emoji: '🚌', color: '#42a5f5' },
-  Shopping:      { emoji: '🛍️', color: '#ab47bc' },
-  Entertainment: { emoji: '🎬', color: '#ef5350' },
-  Health:        { emoji: '💊', color: '#66bb6a' },
-  Utilities:     { emoji: '💡', color: '#ffa726' },
-  Other:         { emoji: '📦', color: '#78909c' },
-};
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+cv.width = W; cv.height = H;
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let state = loadState();
-let currentWeekOffset = 0;  // 0 = this week, -1 = last week, etc.
-let dayFilter = 'all';
+// Row 0 = top (goal), Row 12 = bottom (start safe zone)
+// Row types: 'goal' | 'road' | 'median' | 'safe'
+const RTYPE = [
+  'goal',
+  'road','road','road','road','road',
+  'median',
+  'road','road','road','road','road',
+  'safe'
+];
+// Traffic direction per row (1=right, -1=left, 0=none)
+const RDIR = [0, 1,-1,1,-1,1, 0, -1,1,-1,1,-1, 0];
 
-function loadState() {
-  try {
-    return JSON.parse(localStorage.getItem('wbt_state')) || defaultState();
-  } catch { return defaultState(); }
+const CAR_COLORS = [
+  '#e53935','#fb8c00','#fdd835','#43a047',
+  '#1e88e5','#8e24aa','#00acc1','#e91e63',
+  '#ff7043','#26c6da','#7cb342'
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let G = {};
+
+function init() {
+  G = {
+    px: Math.floor(COLS / 2),  // player column
+    py: ROWS - 1,              // player row
+    cars: makeCars(1),
+    lives: 3,
+    score: 0,
+    lvl: 1,
+    phase: 'play',   // 'play' | 'dead' | 'win' | 'over'
+    deadT: 0,
+    winT: 0,
+    hi: +(localStorage.getItem('ctr_road_hi') || 0),
+  };
 }
 
-function defaultState() {
-  return { budgets: {}, expenses: [] };
-}
-
-function saveState() {
-  localStorage.setItem('wbt_state', JSON.stringify(state));
-}
-
-// ─── Week helpers ─────────────────────────────────────────────────────────────
-function getWeekBounds(offset = 0) {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1) + offset * 7);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return { monday, sunday };
-}
-
-function weekKey(offset = 0) {
-  const { monday } = getWeekBounds(offset);
-  return monday.toISOString().slice(0, 10);
-}
-
-function formatDate(d) {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function fmt(n) {
-  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// ─── Expenses for current week ────────────────────────────────────────────────
-function weekExpenses() {
-  const { monday, sunday } = getWeekBounds(currentWeekOffset);
-  return state.expenses.filter(e => {
-    const d = new Date(e.date);
-    return d >= monday && d <= sunday;
+function makeCars(lvl) {
+  const out = [];
+  const roadRows = [1,2,3,4,5,7,8,9,10,11];
+  roadRows.forEach(row => {
+    const dir = RDIR[row];
+    const count = lvl >= 4 ? 3 : 2;
+    const baseSpd = (0.055 + Math.random() * 0.05) * Math.min(1 + (lvl - 1) * 0.2, 3.2);
+    for (let i = 0; i < count; i++) {
+      const cw = (1.7 + Math.random() * 1.3) * CELL;
+      const gap = W / count;
+      out.push({
+        row, dir,
+        x: dir === 1 ? i * gap : W - i * gap - cw,
+        w: cw,
+        spd: baseSpd * dir,   // px / ms
+        col: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)],
+      });
+    }
   });
+  return out;
 }
 
-function filteredExpenses() {
-  const all = weekExpenses();
-  if (dayFilter === 'all') return all;
-  return all.filter(e => {
-    const d = new Date(e.date);
-    return d.getDay() === parseInt(dayFilter);
-  });
-}
-
-// ─── Budget ───────────────────────────────────────────────────────────────────
-function getCurrentBudget() {
-  return state.budgets[weekKey(currentWeekOffset)] || 0;
-}
-
-function saveBudget() {
-  const val = parseFloat(document.getElementById('budgetInput').value);
-  if (isNaN(val) || val < 0) return;
-  state.budgets[weekKey(currentWeekOffset)] = val;
-  saveState();
-  render();
-}
-
-// ─── Add expense ──────────────────────────────────────────────────────────────
-function addExpense() {
-  const name   = document.getElementById('expName').value.trim();
-  const amount = parseFloat(document.getElementById('expAmount').value);
-  const cat    = document.getElementById('expCat').value;
-
-  if (!name || isNaN(amount) || amount <= 0) {
-    shake(document.querySelector('.form-row'));
+// ── Update ────────────────────────────────────────────────────────────────────
+function update(dt) {
+  if (G.phase === 'dead') {
+    G.deadT -= dt;
+    if (G.deadT <= 0) {
+      if (G.lives <= 0) { G.phase = 'over'; return; }
+      G.px = Math.floor(COLS / 2);
+      G.py = ROWS - 1;
+      G.phase = 'play';
+    }
     return;
   }
 
-  state.expenses.push({
-    id: Date.now(),
-    name,
-    amount,
-    category: cat,
-    date: new Date().toISOString(),
-  });
-  saveState();
-
-  document.getElementById('expName').value = '';
-  document.getElementById('expAmount').value = '';
-  render();
-}
-
-function deleteExpense(id) {
-  state.expenses = state.expenses.filter(e => e.id !== id);
-  saveState();
-  render();
-}
-
-function shake(el) {
-  el.style.animation = 'none';
-  el.offsetHeight;
-  el.style.animation = 'shake 0.3s ease';
-}
-
-// ─── Render ───────────────────────────────────────────────────────────────────
-function render() {
-  renderWeekLabel();
-  renderSummary();
-  renderProgress();
-  renderChart();
-  renderCategories();
-  renderTransactions();
-  renderDayFilter();
-
-  // Pre-fill budget input for current week
-  const b = getCurrentBudget();
-  document.getElementById('budgetInput').value = b || '';
-}
-
-function renderWeekLabel() {
-  const { monday, sunday } = getWeekBounds(currentWeekOffset);
-  const label = currentWeekOffset === 0 ? 'This week' :
-                currentWeekOffset === -1 ? 'Last week' :
-                `${formatDate(monday)} – ${formatDate(sunday)}`;
-  document.getElementById('weekLabel').textContent = label;
-}
-
-function renderSummary() {
-  const budget = getCurrentBudget();
-  const spent  = weekExpenses().reduce((s, e) => s + e.amount, 0);
-  const rem    = budget - spent;
-  const daysElapsed = Math.max(1, (() => {
-    if (currentWeekOffset < 0) return 7;
-    const today = new Date().getDay();
-    return today === 0 ? 7 : today; // Mon=1..Sun=7 within this Mon-Sun week
-  })());
-  const avg = spent / daysElapsed;
-
-  document.getElementById('summaryBudget').textContent    = fmt(budget);
-  document.getElementById('summarySpent').textContent     = fmt(spent);
-
-  const remEl = document.getElementById('summaryRemaining');
-  remEl.textContent = fmt(rem);
-  remEl.className = 'card-value ' + (rem >= 0 ? 'green' : 'red');
-
-  document.getElementById('summaryAvg').textContent = fmt(avg);
-}
-
-function renderProgress() {
-  const budget = getCurrentBudget();
-  const spent  = weekExpenses().reduce((s, e) => s + e.amount, 0);
-  const pct    = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-  const bar    = document.getElementById('progressBar');
-  bar.style.width = pct + '%';
-  bar.style.background = pct < 70 ? 'var(--accent2)' : pct < 90 ? 'var(--warning)' : 'var(--danger)';
-
-  document.getElementById('progressLabel').textContent =
-    budget > 0 ? `${pct.toFixed(1)}% of budget used` : 'No budget set for this week';
-
-  const { monday } = getWeekBounds(currentWeekOffset);
-  document.getElementById('progressDay').textContent =
-    `Week of ${formatDate(monday)}`;
-}
-
-function renderChart() {
-  const { monday } = getWeekBounds(currentWeekOffset);
-  const expenses = weekExpenses();
-
-  // Sum by day-of-week index (0=Mon … 6=Sun)
-  const totals = [0,0,0,0,0,0,0];
-  expenses.forEach(e => {
-    const d = new Date(e.date);
-    // Our week is Mon(0)..Sun(6)
-    const idx = (d.getDay() + 6) % 7;
-    totals[idx] += e.amount;
-  });
-
-  const max = Math.max(...totals, 1);
-  const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-  const chart = document.getElementById('barChart');
-  chart.innerHTML = labels.map((lbl, i) => {
-    const h = Math.round((totals[i] / max) * 88);
-    return `
-      <div class="bar-col">
-        <div class="bar-col-bar" style="height:${h}px" title="${lbl}: ${fmt(totals[i])}"></div>
-        <div class="bar-col-label">${lbl}</div>
-      </div>`;
-  }).join('');
-}
-
-function renderCategories() {
-  const expenses = weekExpenses();
-  const totals = {};
-  expenses.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
-
-  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
-
-  const el = document.getElementById('categories');
-  el.innerHTML = Object.keys(CATEGORIES).map(cat => {
-    const amt = totals[cat] || 0;
-    const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
-    const { emoji, color } = CATEGORIES[cat];
-    return `
-      <div class="cat-card">
-        <div class="cat-header">
-          <div class="cat-name">
-            <div class="cat-dot" style="background:${color}"></div>
-            ${emoji} ${cat}
-          </div>
-          <div class="cat-amount">${fmt(amt)}</div>
-        </div>
-        <div class="bar-bg">
-          <div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function renderDayFilter() {
-  const { monday } = getWeekBounds(currentWeekOffset);
-  const tabs = [{ label: 'All', value: 'all' }];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    tabs.push({ label: DAYS[(d.getDay())], value: String(d.getDay()) });
-  }
-  document.getElementById('dayFilter').innerHTML = tabs.map(t => `
-    <button class="day-tab ${dayFilter === t.value ? 'active' : ''}"
-      onclick="setDayFilter('${t.value}')">${t.label}</button>
-  `).join('');
-}
-
-function setDayFilter(v) {
-  dayFilter = v;
-  render();
-}
-
-function renderTransactions() {
-  const expenses = filteredExpenses().slice().reverse();
-  const list = document.getElementById('txList');
-
-  if (expenses.length === 0) {
-    list.innerHTML = '<li class="empty-state">No expenses yet this week.</li>';
+  if (G.phase === 'win') {
+    G.winT -= dt;
+    if (G.winT <= 0) {
+      G.lvl++;
+      G.px = Math.floor(COLS / 2);
+      G.py = ROWS - 1;
+      G.cars = makeCars(G.lvl);
+      G.phase = 'play';
+    }
     return;
   }
 
-  list.innerHTML = expenses.map(e => {
-    const { emoji, color } = CATEGORIES[e.category] || CATEGORIES.Other;
-    const d = new Date(e.date);
-    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `
-      <li class="tx-item">
-        <div class="tx-left">
-          <div class="tx-icon" style="background:${color}22;color:${color}">${emoji}</div>
-          <div class="tx-info">
-            <div class="tx-name">${escHtml(e.name)}</div>
-            <div class="tx-meta">${e.category} · ${dateStr}, ${timeStr}</div>
-          </div>
-        </div>
-        <div class="tx-amount">-${fmt(e.amount)}</div>
-        <div class="tx-actions">
-          <button class="btn btn-danger" onclick="deleteExpense(${e.id})">✕</button>
-        </div>
-      </li>`;
-  }).join('');
+  if (G.phase !== 'play') return;
+
+  // Move cars & wrap
+  G.cars.forEach(c => {
+    c.x += c.spd * dt;
+    if (c.dir ===  1 && c.x > W)          c.x = -c.w;
+    if (c.dir === -1 && c.x + c.w < 0)    c.x = W;
+  });
+
+  // Continuous collision check while player stands on a road row
+  if (RTYPE[G.py] === 'road') hitTest();
 }
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function hitTest() {
+  const px1 = G.px * CELL + CELL * 0.13;
+  const px2 = G.px * CELL + CELL * 0.87;
+  for (const c of G.cars) {
+    if (c.row !== G.py) continue;
+    if (px1 < c.x + c.w - 4 && px2 > c.x + 4) { die(); return; }
+  }
 }
 
-// ─── Week navigation ──────────────────────────────────────────────────────────
-document.getElementById('prevWeek').onclick = () => {
-  currentWeekOffset--;
-  dayFilter = 'all';
-  render();
-};
-document.getElementById('nextWeek').onclick = () => {
-  if (currentWeekOffset < 0) { currentWeekOffset++; dayFilter = 'all'; render(); }
-};
+function die() {
+  G.lives--;
+  G.phase = 'dead';
+  G.deadT = 1400;
+}
 
-// ─── Keyboard shortcut: Enter to add expense ─────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.target.id === 'expName' || e.target.id === 'expAmount')) {
-    addExpense();
+// ── Movement ──────────────────────────────────────────────────────────────────
+function move(dc, dr) {
+  if (G.phase === 'over') { init(); return; }
+  if (G.phase !== 'play') return;
+
+  const nx = Math.max(0, Math.min(COLS - 1, G.px + dc));
+  const ny = G.py + dr;
+  if (ny < 0 || ny >= ROWS) return;
+
+  G.px = nx;
+  G.py = ny;
+
+  if (ny === 0) {
+    const pts = 10 * G.lvl;
+    G.score += pts;
+    if (G.score > G.hi) {
+      G.hi = G.score;
+      localStorage.setItem('ctr_road_hi', G.hi);
+    }
+    G.phase = 'win';
+    G.winT = 1900;
+    return;
+  }
+
+  if (RTYPE[ny] === 'road') hitTest();
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function draw() {
+  for (let r = 0; r < ROWS; r++) drawRow(r);
+  G.cars.forEach(drawCar);
+  drawPlayer();
+  if (G.phase === 'win')  drawWinScreen();
+  if (G.phase === 'over') drawOverScreen();
+  updateHUD();
+}
+
+function drawRow(r) {
+  const y = r * CELL;
+  const t = RTYPE[r];
+
+  if (t === 'goal') {
+    cx.fillStyle = '#1b5e20';
+    cx.fillRect(0, y, W, CELL);
+    cx.fillStyle = '#2e7d32';
+    for (let c = 0; c < COLS; c++) cx.fillRect(c * CELL + 2, y + 2, CELL - 4, CELL - 4);
+    cx.font = 'bold 13px system-ui';
+    cx.fillStyle = '#a5d6a7';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillText('🏁  G O A L  🏁', W / 2, y + CELL / 2);
+
+  } else if (t === 'median') {
+    cx.fillStyle = '#2e7d32';
+    cx.fillRect(0, y, W, CELL);
+    cx.fillStyle = '#388e3c';
+    for (let c = 0; c < COLS; c++) {
+      blade(c * CELL + 5,  y + 8,  7, 15);
+      blade(c * CELL + 20, y + 5,  7, 20);
+      blade(c * CELL + 36, y + 10, 7, 12);
+    }
+
+  } else if (t === 'safe') {
+    cx.fillStyle = '#33691e';
+    cx.fillRect(0, y, W, CELL);
+    cx.fillStyle = '#558b2f';
+    for (let c = 0; c < COLS; c++) {
+      blade(c * CELL + 6,  y + 6,  7, 17);
+      blade(c * CELL + 22, y + 4,  7, 20);
+      blade(c * CELL + 38, y + 8,  7, 14);
+    }
+    cx.font = 'bold 11px system-ui';
+    cx.fillStyle = 'rgba(255,255,255,0.18)';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillText('S T A R T', W / 2, y + CELL / 2);
+
+  } else {
+    // Road
+    cx.fillStyle = r % 2 === 0 ? '#37474f' : '#263238';
+    cx.fillRect(0, y, W, CELL);
+
+    // Dashed centre line
+    cx.strokeStyle = 'rgba(255,255,200,0.2)';
+    cx.lineWidth = 2;
+    cx.setLineDash([22, 18]);
+    cx.beginPath(); cx.moveTo(0, y + CELL / 2); cx.lineTo(W, y + CELL / 2); cx.stroke();
+    cx.setLineDash([]);
+
+    // Row divider
+    cx.strokeStyle = 'rgba(255,255,255,0.06)';
+    cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke();
+
+    // Subtle direction hint arrows
+    cx.fillStyle = 'rgba(255,255,255,0.055)';
+    cx.font = '20px system-ui';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    const arrow = RDIR[r] === 1 ? '›' : '‹';
+    for (let c = 1; c < COLS; c += 3) cx.fillText(arrow, c * CELL + CELL / 2, y + CELL / 2);
+  }
+}
+
+// Small grass blade helper
+function blade(x, y, w, h) {
+  cx.fillRect(x, y, w, h);
+}
+
+function drawCar({ row, x, w, col, dir }) {
+  const y = row * CELL;
+  const pad = 5, h = CELL, bh = h - pad * 2, br = 7;
+
+  // Drop shadow
+  cx.fillStyle = 'rgba(0,0,0,0.28)';
+  rrect(x + pad + 2, y + pad + 3, w - pad * 2, bh, br);
+  cx.fill();
+
+  // Body
+  cx.fillStyle = col;
+  rrect(x + pad, y + pad, w - pad * 2, bh, br);
+  cx.fill();
+
+  // Roof
+  const rfx = x + pad + w * 0.18, rfw = w * 0.64;
+  const rfy = y + pad + bh * 0.07, rfh = bh * 0.44;
+  cx.fillStyle = darken(col, 38);
+  rrect(rfx, rfy, rfw, rfh, 5);
+  cx.fill();
+
+  // Windows
+  const wy = rfy + 3, wh = rfh - 6;
+  cx.fillStyle = 'rgba(180,225,255,0.88)';
+  cx.fillRect(rfx + 4,         wy, rfw * 0.43, wh);
+  cx.fillRect(rfx + rfw * 0.55, wy, rfw * 0.42, wh);
+
+  // Headlights (front) & taillights (back)
+  const frontX = dir === 1 ? x + w - pad - 7 : x + pad + 2;
+  const backX  = dir === 1 ? x + pad + 2      : x + w - pad - 7;
+  cx.fillStyle = '#fffde7';
+  cx.fillRect(frontX, y + h * 0.33, 5, 6);
+  cx.fillRect(frontX, y + h * 0.62, 5, 6);
+  cx.fillStyle = '#f44336';
+  cx.fillRect(backX, y + h * 0.33, 5, 6);
+  cx.fillRect(backX, y + h * 0.62, 5, 6);
+
+  // Wheels
+  cx.fillStyle = '#111';
+  wdot(x + pad + w * 0.22, y + h - pad - 3, 5);
+  wdot(x + pad + w * 0.78, y + h - pad - 3, 5);
+}
+
+function drawPlayer() {
+  const x = G.px * CELL, y = G.py * CELL;
+
+  if (G.phase === 'dead') {
+    if (Math.floor(G.deadT / 140) % 2 === 0) {
+      cx.font = `${CELL * 0.78}px serif`;
+      cx.textAlign = 'center';
+      cx.textBaseline = 'middle';
+      cx.fillText('💥', x + CELL / 2, y + CELL / 2);
+    }
+    return;
+  }
+
+  // Glow when on a road
+  if (RTYPE[G.py] === 'road') {
+    cx.shadowColor = 'rgba(255,255,120,0.65)';
+    cx.shadowBlur = 18;
+  }
+  cx.font = `${CELL * 0.72}px serif`;
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText('🐔', x + CELL / 2, y + CELL / 2);
+  cx.shadowBlur = 0;
+}
+
+function drawWinScreen() {
+  overlay(0.65);
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.font = 'bold 44px system-ui';
+  cx.fillStyle = '#69f0ae';
+  cx.fillText('YOU MADE IT! 🎉', W / 2, H / 2 - 34);
+  cx.font = '22px system-ui';
+  cx.fillStyle = '#fff';
+  cx.fillText(`+${10 * G.lvl} points`, W / 2, H / 2 + 16);
+  cx.font = '16px system-ui';
+  cx.fillStyle = 'rgba(255,255,255,0.55)';
+  cx.fillText(`Level ${G.lvl + 1} incoming…`, W / 2, H / 2 + 58);
+}
+
+function drawOverScreen() {
+  overlay(0.78);
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.font = 'bold 52px system-ui';
+  cx.fillStyle = '#ff5252';
+  cx.fillText('GAME OVER', W / 2, H / 2 - 55);
+  cx.font = '26px system-ui';
+  cx.fillStyle = '#fff';
+  cx.fillText(`Score: ${G.score}`, W / 2, H / 2 + 8);
+  cx.fillText(`Best:  ${G.hi}`,   W / 2, H / 2 + 48);
+  cx.font = '17px system-ui';
+  cx.fillStyle = 'rgba(255,255,255,0.48)';
+  cx.fillText('Press R or any arrow to play again', W / 2, H / 2 + 100);
+}
+
+function updateHUD() {
+  document.getElementById('hLives').textContent = '❤️'.repeat(Math.max(0, G.lives)) || '💀';
+  document.getElementById('hScore').textContent = `Score: ${G.score}`;
+  document.getElementById('hLevel').textContent = `Level ${G.lvl}`;
+  document.getElementById('hBest').textContent  = `Best: ${G.hi}`;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function rrect(x, y, w, h, r) {
+  cx.beginPath();
+  cx.moveTo(x + r, y);
+  cx.lineTo(x + w - r, y);
+  cx.quadraticCurveTo(x + w, y, x + w, y + r);
+  cx.lineTo(x + w, y + h - r);
+  cx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  cx.lineTo(x + r, y + h);
+  cx.quadraticCurveTo(x, y + h, x, y + h - r);
+  cx.lineTo(x, y + r);
+  cx.quadraticCurveTo(x, y, x + r, y);
+  cx.closePath();
+}
+
+function wdot(x, y, r) {
+  cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+}
+
+function darken(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const gr = Math.max(0, ((n >> 8) & 255) - amt);
+  const b = Math.max(0, (n & 255) - amt);
+  return `rgb(${r},${gr},${b})`;
+}
+
+function overlay(alpha) {
+  cx.fillStyle = `rgba(0,0,0,${alpha})`;
+  cx.fillRect(0, 0, W, H);
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+const held = new Set();
+
+document.addEventListener('keydown', ev => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(ev.key)) ev.preventDefault();
+  if (held.has(ev.key)) return;
+  held.add(ev.key);
+  switch (ev.key) {
+    case 'ArrowUp':    case 'w': case 'W': move( 0, -1); break;
+    case 'ArrowDown':  case 's': case 'S': move( 0,  1); break;
+    case 'ArrowLeft':  case 'a': case 'A': move(-1,  0); break;
+    case 'ArrowRight': case 'd': case 'D': move( 1,  0); break;
+    case 'r': case 'R': init(); break;
   }
 });
 
-// ─── Shake animation ──────────────────────────────────────────────────────────
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    20%,60% { transform: translateX(-6px); }
-    40%,80% { transform: translateX(6px); }
-  }`;
-document.head.appendChild(style);
+document.addEventListener('keyup', ev => held.delete(ev.key));
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-render();
+function e(ev) { ev.preventDefault(); }  // prevent scroll on touch
+function tap(dc, dr) {
+  if (G.phase === 'over') { init(); return; }
+  move(dc, dr);
+}
+
+// ── Game Loop ─────────────────────────────────────────────────────────────────
+let lt = 0;
+
+function loop(ts) {
+  const dt = Math.min(ts - lt, 50);  // cap delta to 50ms
+  lt = ts;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+init();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
