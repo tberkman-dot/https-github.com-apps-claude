@@ -331,9 +331,12 @@ async function fetchFlights() {
     setStatus('loading', 'Fetching flights…');
     document.getElementById('refresh-btn').disabled = true;
 
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
         const res = await fetch(`${OPENSKY_API}?${params}`, {
-            signal: AbortSignal.timeout(TIMEOUT_MS),
+            signal: controller.signal,
         });
 
         if (res.status === 429) throw new Error('Rate limited — wait a moment and refresh');
@@ -346,7 +349,7 @@ async function fetchFlights() {
         const n = states.length;
         setStatus('', `${n} flight${n !== 1 ? 's' : ''} • ${new Date().toLocaleTimeString()}`);
     } catch (err) {
-        const msg = err.name === 'TimeoutError' ? 'Request timed out' : err.message;
+        const msg = err.name === 'AbortError' ? 'Request timed out' : err.message;
         setStatus('error', msg);
     } finally {
         document.getElementById('refresh-btn').disabled = false;
