@@ -1,814 +1,536 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Weekly Budget Tracker</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlightWatch — Live Flight Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #232636;
-      --border: #2e3147;
-      --accent: #6c63ff;
-      --accent2: #48c774;
-      --danger: #ff5c5c;
-      --warning: #ffdd57;
-      --text: #e0e2f0;
-      --muted: #7b7f9e;
-      --radius: 10px;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px 16px;
-    }
+        /* ── Header ── */
+        #header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            z-index: 1000;
+            flex-shrink: 0;
+        }
 
-    h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
+        #header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #58a6ff;
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }
 
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+        #search {
+            flex: 1;
+            max-width: 280px;
+            padding: 7px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        #search:focus { border-color: #58a6ff; }
+        #search::placeholder { color: #6e7681; }
 
-    .week-nav {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
+        #refresh-btn {
+            padding: 7px 14px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        #refresh-btn:hover   { background: #30363d; }
+        #refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .week-nav button {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      width: 32px; height: 32px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .week-nav button:hover { background: var(--border); }
+        #status {
+            font-size: 12px;
+            color: #6e7681;
+            white-space: nowrap;
+            margin-left: auto;
+        }
+        #status.loading { color: #58a6ff; }
+        #status.error   { color: #f85149; }
 
-    /* Summary cards */
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 14px;
-      margin-bottom: 28px;
-    }
+        /* ── Map area ── */
+        #main {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
 
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-    }
+        #map { width: 100%; height: 100%; }
 
-    .card-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
+        /* ── Loading spinner ── */
+        #loading-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 17, 23, 0.65);
+            z-index: 999;
+        }
+        #loading-overlay.hidden { display: none; }
 
-    .card-value {
-      font-size: 1.6rem;
-      font-weight: 700;
-    }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-    .card-value.green { color: var(--accent2); }
-    .card-value.red   { color: var(--danger); }
-    .card-value.yellow { color: var(--warning); }
+        /* ── Flight detail panel ── */
+        #flight-panel {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 280px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            z-index: 1000;
+            overflow: hidden;
+            transform: translateX(320px);
+            transition: transform 0.25s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        #flight-panel.open { transform: translateX(0); }
 
-    /* Progress bar */
-    .progress-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      margin-bottom: 28px;
-    }
+        #panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: #21262d;
+            border-bottom: 1px solid #30363d;
+        }
 
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      font-size: 0.85rem;
-    }
+        #panel-callsign {
+            font-size: 20px;
+            font-weight: 700;
+            color: #58a6ff;
+            letter-spacing: 1.5px;
+        }
 
-    .bar-bg {
-      background: var(--surface2);
-      border-radius: 99px;
-      height: 10px;
-      overflow: hidden;
-    }
+        #panel-close {
+            background: none;
+            border: none;
+            color: #6e7681;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        #panel-close:hover { color: #e6edf3; background: #30363d; }
 
-    .bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      transition: width 0.4s ease, background 0.4s;
-    }
+        #panel-body { padding: 12px 14px; }
 
-    /* Budget setting */
-    .budget-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+            font-size: 13px;
+        }
+        .detail-row:last-child { border-bottom: none; }
 
-    .budget-row label {
-      font-size: 0.85rem;
-      color: var(--muted);
-      white-space: nowrap;
-    }
+        .detail-label {
+            color: #6e7681;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.8px;
+        }
 
-    input[type="number"], input[type="text"], select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 6px;
-      padding: 8px 12px;
-      font-size: 0.9rem;
-      outline: none;
-      transition: border-color 0.15s;
-    }
+        .detail-value {
+            color: #e6edf3;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+        .detail-value.climbing   { color: #3fb950; }
+        .detail-value.descending { color: #f85149; }
+        .detail-value.on-ground  { color: #d29922; }
 
-    input[type="number"]:focus,
-    input[type="text"]:focus,
-    select:focus {
-      border-color: var(--accent);
-    }
+        #countdown {
+            font-size: 11px;
+            color: #6e7681;
+            padding: 8px 14px;
+            border-top: 1px solid #30363d;
+            text-align: center;
+        }
 
-    input[type="number"].budget-input { width: 120px; }
+        /* ── Leaflet overrides ── */
+        .leaflet-control-attribution {
+            background: rgba(13,17,23,0.8) !important;
+            color: #6e7681 !important;
+        }
+        .leaflet-control-attribution a { color: #58a6ff !important; }
 
-    /* Add expense form */
-    .form-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 28px;
-    }
-
-    .form-card h2 {
-      font-size: 1rem;
-      margin-bottom: 14px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .form-row input[type="text"]  { flex: 2; min-width: 120px; }
-    .form-row input[type="number"] { flex: 1; min-width: 100px; }
-    .form-row select               { flex: 1; min-width: 120px; }
-
-    .btn {
-      padding: 8px 18px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: opacity 0.15s, transform 0.1s;
-    }
-    .btn:hover { opacity: 0.88; }
-    .btn:active { transform: scale(0.97); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-danger  { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 0.8rem; }
-
-    /* Category breakdown */
-    .section-title {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .categories {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 12px;
-      margin-bottom: 28px;
-    }
-
-    .cat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-    }
-
-    .cat-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .cat-name {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .cat-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-    }
-
-    .cat-amount {
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    /* Transactions list */
-    .transactions {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .tx-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .tx-header h2 { font-size: 1rem; }
-
-    .tx-list { list-style: none; }
-
-    .tx-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--border);
-      gap: 10px;
-      transition: background 0.1s;
-    }
-    .tx-item:last-child { border-bottom: none; }
-    .tx-item:hover { background: var(--surface2); }
-
-    .tx-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .tx-icon {
-      width: 36px; height: 36px;
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-
-    .tx-info { min-width: 0; }
-    .tx-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .tx-meta {
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    .tx-amount {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--danger);
-      flex-shrink: 0;
-    }
-
-    .tx-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .empty-state {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    /* Day filter tabs */
-    .day-filter {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .day-tab {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 4px 10px;
-      border-radius: 99px;
-      font-size: 0.78rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .day-tab.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    /* Chart */
-    .chart-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 28px;
-    }
-
-    .bar-chart {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      height: 100px;
-      margin-top: 12px;
-    }
-
-    .bar-col {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      height: 100%;
-      justify-content: flex-end;
-    }
-
-    .bar-col-bar {
-      width: 100%;
-      border-radius: 4px 4px 0 0;
-      background: var(--accent);
-      transition: height 0.4s ease;
-      min-height: 2px;
-    }
-
-    .bar-col-label {
-      font-size: 0.7rem;
-      color: var(--muted);
-    }
-
-    @media (max-width: 500px) {
-      .form-row { flex-direction: column; }
-      .form-row input, .form-row select { width: 100%; }
-    }
-  </style>
+        .plane-tooltip {
+            background: rgba(22,27,34,0.92);
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            box-shadow: none;
+        }
+        .leaflet-tooltip.plane-tooltip::before { border-top-color: #30363d; }
+    </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>Weekly Budget</h1>
-  <div class="week-nav">
-    <button id="prevWeek" title="Previous week">&#8592;</button>
-    <span id="weekLabel"></span>
-    <button id="nextWeek" title="Next week">&#8594;</button>
-  </div>
+<div id="header">
+    <h1>✈ FlightWatch</h1>
+    <input type="text" id="search" placeholder="Filter by callsign…" autocomplete="off" spellcheck="false" />
+    <button id="refresh-btn">Refresh</button>
+    <span id="status">Initializing…</span>
 </div>
 
-<!-- Budget setting -->
-<div class="budget-row">
-  <label for="budgetInput">Weekly budget:</label>
-  <input type="number" id="budgetInput" class="budget-input" min="0" step="1" placeholder="500" />
-  <button class="btn btn-primary" onclick="saveBudget()">Set</button>
-</div>
+<div id="main">
+    <div id="map"></div>
 
-<!-- Summary -->
-<div class="summary">
-  <div class="card">
-    <div class="card-label">Budget</div>
-    <div class="card-value" id="summaryBudget">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Spent</div>
-    <div class="card-value red" id="summarySpent">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Remaining</div>
-    <div class="card-value green" id="summaryRemaining">$0</div>
-  </div>
-  <div class="card">
-    <div class="card-label">Daily Avg</div>
-    <div class="card-value" id="summaryAvg">$0</div>
-  </div>
-</div>
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
 
-<!-- Progress bar -->
-<div class="progress-wrap">
-  <div class="progress-header">
-    <span id="progressLabel">0% of budget used</span>
-    <span id="progressDay"></span>
-  </div>
-  <div class="bar-bg">
-    <div class="bar-fill" id="progressBar" style="width:0%;background:var(--accent2)"></div>
-  </div>
-</div>
-
-<!-- Daily chart -->
-<div class="chart-wrap">
-  <div class="section-title">Spending by day</div>
-  <div class="bar-chart" id="barChart"></div>
-</div>
-
-<!-- Category breakdown -->
-<div class="section-title">By category</div>
-<div class="categories" id="categories"></div>
-
-<!-- Add expense -->
-<div class="form-card">
-  <h2>Add Expense</h2>
-  <div class="form-row">
-    <input type="text" id="expName" placeholder="Description" maxlength="60" />
-    <input type="number" id="expAmount" placeholder="Amount" min="0.01" step="0.01" />
-    <select id="expCat">
-      <option value="Food">🍔 Food</option>
-      <option value="Transport">🚌 Transport</option>
-      <option value="Shopping">🛍️ Shopping</option>
-      <option value="Entertainment">🎬 Entertainment</option>
-      <option value="Health">💊 Health</option>
-      <option value="Utilities">💡 Utilities</option>
-      <option value="Other">📦 Other</option>
-    </select>
-    <button class="btn btn-primary" onclick="addExpense()">Add</button>
-  </div>
-</div>
-
-<!-- Transactions -->
-<div class="transactions">
-  <div class="tx-header">
-    <h2>Transactions</h2>
-    <div class="day-filter" id="dayFilter"></div>
-  </div>
-  <ul class="tx-list" id="txList"></ul>
+    <div id="flight-panel">
+        <div id="panel-header">
+            <span id="panel-callsign">—</span>
+            <button id="panel-close" title="Close">✕</button>
+        </div>
+        <div id="panel-body"></div>
+        <div id="countdown"></div>
+    </div>
 </div>
 
 <script>
-// ─── Constants ───────────────────────────────────────────────────────────────
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const FULL_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+// ─────────────────────────────────────────────
+//  Config
+// ─────────────────────────────────────────────
+const OPENSKY_API = 'https://opensky-network.org/api/states/all';
+const REFRESH_MS  = 60_000;  // 60 s between auto-refreshes (respect rate limits)
+const TIMEOUT_MS  = 15_000;
 
-const CATEGORIES = {
-  Food:          { emoji: '🍔', color: '#ff7043' },
-  Transport:     { emoji: '🚌', color: '#42a5f5' },
-  Shopping:      { emoji: '🛍️', color: '#ab47bc' },
-  Entertainment: { emoji: '🎬', color: '#ef5350' },
-  Health:        { emoji: '💊', color: '#66bb6a' },
-  Utilities:     { emoji: '💡', color: '#ffa726' },
-  Other:         { emoji: '📦', color: '#78909c' },
+// OpenSky state-vector field indices — see CLAUDE.md for full reference
+const F = {
+    ICAO24:       0,
+    CALLSIGN:     1,
+    COUNTRY:      2,
+    TIME_POS:     3,
+    LAST_CONTACT: 4,
+    LON:          5,
+    LAT:          6,
+    BARO_ALT:     7,   // metres
+    ON_GROUND:    8,
+    VELOCITY:     9,   // m/s
+    HEADING:      10,  // degrees true, 0 = north
+    VERT_RATE:    11,  // m/s, positive = climbing
+    GEO_ALT:      13,  // metres
+    SQUAWK:       14,
 };
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let state = loadState();
-let currentWeekOffset = 0;  // 0 = this week, -1 = last week, etc.
-let dayFilter = 'all';
+// ─────────────────────────────────────────────
+//  App state
+// ─────────────────────────────────────────────
+let map;
+let flightData   = {};   // icao24 → { marker, state }
+let selectedIcao = null;
+let refreshTimer;
+let countdownTimer;
+let nextRefresh;
 
-function loadState() {
-  try {
-    return JSON.parse(localStorage.getItem('wbt_state')) || defaultState();
-  } catch { return defaultState(); }
+// ─────────────────────────────────────────────
+//  Map initialisation
+// ─────────────────────────────────────────────
+function initMap() {
+    map = L.map('map', { zoomControl: true }).setView([39.5, -98.35], 5);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+            '&copy; <a href="https://carto.com">CARTO</a>',
+        maxZoom: 18,
+    }).addTo(map);
+
+    map.on('moveend', fetchFlights);
+    map.on('click', () => {
+        if (document.getElementById('flight-panel').classList.contains('open')) closePanel();
+    });
+
+    fetchFlights();
 }
 
-function defaultState() {
-  return { budgets: {}, expenses: [] };
+// ─────────────────────────────────────────────
+//  Plane SVG icon (rotated by heading)
+// ─────────────────────────────────────────────
+function planeIconHTML(heading, selected) {
+    const color = selected ? '#ffd700' : '#58a6ff';
+    const glow  = selected ? 'drop-shadow(0 0 5px rgba(255,215,0,0.8))' : 'none';
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"
+                 style="filter:${glow};display:block;">
+        <g transform="rotate(${heading ?? 0},14,14)">
+            <polygon points="14,2 10,14 4,14 6,17 11,17 9,26 14,24 19,26 17,17 22,17 24,14 18,14"
+                     fill="${color}" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>
+        </g>
+    </svg>`;
 }
 
-function saveState() {
-  localStorage.setItem('wbt_state', JSON.stringify(state));
+function makePlaneIcon(heading, selected) {
+    return L.divIcon({
+        html:       planeIconHTML(heading, selected),
+        className:  '',
+        iconSize:   [28, 28],
+        iconAnchor: [14, 14],
+    });
 }
 
-// ─── Week helpers ─────────────────────────────────────────────────────────────
-function getWeekBounds(offset = 0) {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1) + offset * 7);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return { monday, sunday };
+// ─────────────────────────────────────────────
+//  API fetch
+// ─────────────────────────────────────────────
+async function fetchFlights() {
+    const bounds = map.getBounds();
+    const params = new URLSearchParams({
+        lamin: bounds.getSouth().toFixed(4),
+        lomin: bounds.getWest().toFixed(4),
+        lamax: bounds.getNorth().toFixed(4),
+        lomax: bounds.getEast().toFixed(4),
+    });
+
+    setStatus('loading', 'Fetching flights…');
+    document.getElementById('refresh-btn').disabled = true;
+
+    try {
+        const res = await fetch(`${OPENSKY_API}?${params}`, {
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+
+        if (res.status === 429) throw new Error('Rate limited — wait a moment and refresh');
+        if (!res.ok)            throw new Error(`API error ${res.status}`);
+
+        const data   = await res.json();
+        const states = data.states || [];
+        renderFlights(states);
+
+        const n = states.length;
+        setStatus('', `${n} flight${n !== 1 ? 's' : ''} • ${new Date().toLocaleTimeString()}`);
+    } catch (err) {
+        const msg = err.name === 'TimeoutError' ? 'Request timed out' : err.message;
+        setStatus('error', msg);
+    } finally {
+        document.getElementById('refresh-btn').disabled = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
+        scheduleRefresh();
+    }
 }
 
-function weekKey(offset = 0) {
-  const { monday } = getWeekBounds(offset);
-  return monday.toISOString().slice(0, 10);
+// ─────────────────────────────────────────────
+//  Render / update markers
+// ─────────────────────────────────────────────
+function renderFlights(states) {
+    const searchVal    = document.getElementById('search').value.trim().toUpperCase();
+    const visibleIcaos = new Set();
+
+    states.forEach(state => {
+        const icao     = state[F.ICAO24];
+        const callsign = (state[F.CALLSIGN] || '').trim();
+        const lat      = state[F.LAT];
+        const lon      = state[F.LON];
+
+        if (!lat || !lon) return;
+
+        if (searchVal) {
+            if (!callsign.toUpperCase().includes(searchVal) &&
+                !icao.toUpperCase().includes(searchVal)) return;
+        }
+
+        visibleIcaos.add(icao);
+        const heading    = state[F.HEADING];
+        const isSelected = icao === selectedIcao;
+
+        if (flightData[icao]?.marker) {
+            flightData[icao].marker.setLatLng([lat, lon]);
+            flightData[icao].marker.setIcon(makePlaneIcon(heading, isSelected));
+            flightData[icao].state = state;
+        } else {
+            const marker = L.marker([lat, lon], { icon: makePlaneIcon(heading, isSelected) });
+            marker.bindTooltip(callsign || icao.toUpperCase(), {
+                permanent:  false,
+                direction:  'top',
+                className:  'plane-tooltip',
+            });
+            marker.on('click', e => { L.DomEvent.stopPropagation(e); selectFlight(icao); });
+            marker.addTo(map);
+            flightData[icao] = { marker, state };
+        }
+    });
+
+    // Remove markers for flights that left the view or no longer match the filter
+    Object.keys(flightData).forEach(icao => {
+        if (!visibleIcaos.has(icao)) {
+            flightData[icao].marker.remove();
+            delete flightData[icao];
+            if (icao === selectedIcao) closePanel();
+        }
+    });
+
+    // Keep detail panel current if the selected flight was refreshed
+    if (selectedIcao && flightData[selectedIcao]) renderPanel(selectedIcao);
 }
 
-function formatDate(d) {
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+// ─────────────────────────────────────────────
+//  Flight selection & detail panel
+// ─────────────────────────────────────────────
+function selectFlight(icao) {
+    if (selectedIcao && flightData[selectedIcao]) {
+        const prev = flightData[selectedIcao];
+        prev.marker.setIcon(makePlaneIcon(prev.state[F.HEADING], false));
+    }
+    selectedIcao = icao;
+    if (flightData[icao]) {
+        flightData[icao].marker.setIcon(
+            makePlaneIcon(flightData[icao].state[F.HEADING], true)
+        );
+    }
+    renderPanel(icao);
 }
 
-function fmt(n) {
-  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function renderPanel(icao) {
+    const entry = flightData[icao];
+    if (!entry) return;
+    const s        = entry.state;
+    const callsign = (s[F.CALLSIGN] || '').trim() || s[F.ICAO24].toUpperCase();
+    const onGround = s[F.ON_GROUND];
+
+    const altFt  = s[F.BARO_ALT] != null
+        ? Math.round(s[F.BARO_ALT] * 3.28084).toLocaleString() + ' ft'
+        : 'N/A';
+    const speedKt = s[F.VELOCITY] != null
+        ? Math.round(s[F.VELOCITY] * 1.94384) + ' kts'
+        : 'N/A';
+
+    let vertLabel = 'Level';
+    let vertClass = '';
+    const vr = s[F.VERT_RATE];
+    if (vr != null) {
+        if (vr >  0.5) { vertLabel = '▲ Climbing';   vertClass = 'climbing';   }
+        if (vr < -0.5) { vertLabel = '▼ Descending'; vertClass = 'descending'; }
+    }
+
+    const heading = s[F.HEADING] != null ? Math.round(s[F.HEADING]) + '°' : 'N/A';
+    const squawk  = s[F.SQUAWK] || 'N/A';
+
+    const rows = [
+        ['Country',  s[F.COUNTRY] || 'Unknown',                   ''],
+        ['ICAO24',   s[F.ICAO24].toUpperCase(),                   ''],
+        ['Altitude', onGround ? '—' : altFt,     onGround ? 'on-ground' : ''],
+        ['Speed',    onGround ? '—' : speedKt,   onGround ? 'on-ground' : ''],
+        ['Heading',  heading,                                      ''],
+        ['Vertical', onGround ? 'On Ground' : vertLabel, onGround ? 'on-ground' : vertClass],
+        ['Squawk',   squawk,                                       ''],
+    ];
+
+    document.getElementById('panel-callsign').textContent = callsign;
+    document.getElementById('panel-body').innerHTML = rows.map(([label, value, cls]) =>
+        `<div class="detail-row">
+            <span class="detail-label">${label}</span>
+            <span class="detail-value ${cls}">${value}</span>
+        </div>`
+    ).join('');
+
+    document.getElementById('flight-panel').classList.add('open');
 }
 
-// ─── Expenses for current week ────────────────────────────────────────────────
-function weekExpenses() {
-  const { monday, sunday } = getWeekBounds(currentWeekOffset);
-  return state.expenses.filter(e => {
-    const d = new Date(e.date);
-    return d >= monday && d <= sunday;
-  });
+function closePanel() {
+    document.getElementById('flight-panel').classList.remove('open');
+    if (selectedIcao && flightData[selectedIcao]) {
+        flightData[selectedIcao].marker.setIcon(
+            makePlaneIcon(flightData[selectedIcao].state[F.HEADING], false)
+        );
+    }
+    selectedIcao = null;
 }
 
-function filteredExpenses() {
-  const all = weekExpenses();
-  if (dayFilter === 'all') return all;
-  return all.filter(e => {
-    const d = new Date(e.date);
-    return d.getDay() === parseInt(dayFilter);
-  });
+// ─────────────────────────────────────────────
+//  Auto-refresh with countdown
+// ─────────────────────────────────────────────
+function scheduleRefresh() {
+    clearTimeout(refreshTimer);
+    clearInterval(countdownTimer);
+    nextRefresh = Date.now() + REFRESH_MS;
+
+    countdownTimer = setInterval(() => {
+        const secs = Math.max(0, Math.ceil((nextRefresh - Date.now()) / 1000));
+        document.getElementById('countdown').textContent = `Auto-refresh in ${secs}s`;
+    }, 1000);
+
+    refreshTimer = setTimeout(() => {
+        clearInterval(countdownTimer);
+        fetchFlights();
+    }, REFRESH_MS);
 }
 
-// ─── Budget ───────────────────────────────────────────────────────────────────
-function getCurrentBudget() {
-  return state.budgets[weekKey(currentWeekOffset)] || 0;
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+function setStatus(type, msg) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className   = type;
 }
 
-function saveBudget() {
-  const val = parseFloat(document.getElementById('budgetInput').value);
-  if (isNaN(val) || val < 0) return;
-  state.budgets[weekKey(currentWeekOffset)] = val;
-  saveState();
-  render();
-}
-
-// ─── Add expense ──────────────────────────────────────────────────────────────
-function addExpense() {
-  const name   = document.getElementById('expName').value.trim();
-  const amount = parseFloat(document.getElementById('expAmount').value);
-  const cat    = document.getElementById('expCat').value;
-
-  if (!name || isNaN(amount) || amount <= 0) {
-    shake(document.querySelector('.form-row'));
-    return;
-  }
-
-  state.expenses.push({
-    id: Date.now(),
-    name,
-    amount,
-    category: cat,
-    date: new Date().toISOString(),
-  });
-  saveState();
-
-  document.getElementById('expName').value = '';
-  document.getElementById('expAmount').value = '';
-  render();
-}
-
-function deleteExpense(id) {
-  state.expenses = state.expenses.filter(e => e.id !== id);
-  saveState();
-  render();
-}
-
-function shake(el) {
-  el.style.animation = 'none';
-  el.offsetHeight;
-  el.style.animation = 'shake 0.3s ease';
-}
-
-// ─── Render ───────────────────────────────────────────────────────────────────
-function render() {
-  renderWeekLabel();
-  renderSummary();
-  renderProgress();
-  renderChart();
-  renderCategories();
-  renderTransactions();
-  renderDayFilter();
-
-  // Pre-fill budget input for current week
-  const b = getCurrentBudget();
-  document.getElementById('budgetInput').value = b || '';
-}
-
-function renderWeekLabel() {
-  const { monday, sunday } = getWeekBounds(currentWeekOffset);
-  const label = currentWeekOffset === 0 ? 'This week' :
-                currentWeekOffset === -1 ? 'Last week' :
-                `${formatDate(monday)} – ${formatDate(sunday)}`;
-  document.getElementById('weekLabel').textContent = label;
-}
-
-function renderSummary() {
-  const budget = getCurrentBudget();
-  const spent  = weekExpenses().reduce((s, e) => s + e.amount, 0);
-  const rem    = budget - spent;
-  const daysElapsed = Math.max(1, (() => {
-    if (currentWeekOffset < 0) return 7;
-    const today = new Date().getDay();
-    return today === 0 ? 7 : today; // Mon=1..Sun=7 within this Mon-Sun week
-  })());
-  const avg = spent / daysElapsed;
-
-  document.getElementById('summaryBudget').textContent    = fmt(budget);
-  document.getElementById('summarySpent').textContent     = fmt(spent);
-
-  const remEl = document.getElementById('summaryRemaining');
-  remEl.textContent = fmt(rem);
-  remEl.className = 'card-value ' + (rem >= 0 ? 'green' : 'red');
-
-  document.getElementById('summaryAvg').textContent = fmt(avg);
-}
-
-function renderProgress() {
-  const budget = getCurrentBudget();
-  const spent  = weekExpenses().reduce((s, e) => s + e.amount, 0);
-  const pct    = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-  const bar    = document.getElementById('progressBar');
-  bar.style.width = pct + '%';
-  bar.style.background = pct < 70 ? 'var(--accent2)' : pct < 90 ? 'var(--warning)' : 'var(--danger)';
-
-  document.getElementById('progressLabel').textContent =
-    budget > 0 ? `${pct.toFixed(1)}% of budget used` : 'No budget set for this week';
-
-  const { monday } = getWeekBounds(currentWeekOffset);
-  document.getElementById('progressDay').textContent =
-    `Week of ${formatDate(monday)}`;
-}
-
-function renderChart() {
-  const { monday } = getWeekBounds(currentWeekOffset);
-  const expenses = weekExpenses();
-
-  // Sum by day-of-week index (0=Mon … 6=Sun)
-  const totals = [0,0,0,0,0,0,0];
-  expenses.forEach(e => {
-    const d = new Date(e.date);
-    // Our week is Mon(0)..Sun(6)
-    const idx = (d.getDay() + 6) % 7;
-    totals[idx] += e.amount;
-  });
-
-  const max = Math.max(...totals, 1);
-  const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-
-  const chart = document.getElementById('barChart');
-  chart.innerHTML = labels.map((lbl, i) => {
-    const h = Math.round((totals[i] / max) * 88);
-    return `
-      <div class="bar-col">
-        <div class="bar-col-bar" style="height:${h}px" title="${lbl}: ${fmt(totals[i])}"></div>
-        <div class="bar-col-label">${lbl}</div>
-      </div>`;
-  }).join('');
-}
-
-function renderCategories() {
-  const expenses = weekExpenses();
-  const totals = {};
-  expenses.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
-
-  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
-
-  const el = document.getElementById('categories');
-  el.innerHTML = Object.keys(CATEGORIES).map(cat => {
-    const amt = totals[cat] || 0;
-    const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
-    const { emoji, color } = CATEGORIES[cat];
-    return `
-      <div class="cat-card">
-        <div class="cat-header">
-          <div class="cat-name">
-            <div class="cat-dot" style="background:${color}"></div>
-            ${emoji} ${cat}
-          </div>
-          <div class="cat-amount">${fmt(amt)}</div>
-        </div>
-        <div class="bar-bg">
-          <div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function renderDayFilter() {
-  const { monday } = getWeekBounds(currentWeekOffset);
-  const tabs = [{ label: 'All', value: 'all' }];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    tabs.push({ label: DAYS[(d.getDay())], value: String(d.getDay()) });
-  }
-  document.getElementById('dayFilter').innerHTML = tabs.map(t => `
-    <button class="day-tab ${dayFilter === t.value ? 'active' : ''}"
-      onclick="setDayFilter('${t.value}')">${t.label}</button>
-  `).join('');
-}
-
-function setDayFilter(v) {
-  dayFilter = v;
-  render();
-}
-
-function renderTransactions() {
-  const expenses = filteredExpenses().slice().reverse();
-  const list = document.getElementById('txList');
-
-  if (expenses.length === 0) {
-    list.innerHTML = '<li class="empty-state">No expenses yet this week.</li>';
-    return;
-  }
-
-  list.innerHTML = expenses.map(e => {
-    const { emoji, color } = CATEGORIES[e.category] || CATEGORIES.Other;
-    const d = new Date(e.date);
-    const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `
-      <li class="tx-item">
-        <div class="tx-left">
-          <div class="tx-icon" style="background:${color}22;color:${color}">${emoji}</div>
-          <div class="tx-info">
-            <div class="tx-name">${escHtml(e.name)}</div>
-            <div class="tx-meta">${e.category} · ${dateStr}, ${timeStr}</div>
-          </div>
-        </div>
-        <div class="tx-amount">-${fmt(e.amount)}</div>
-        <div class="tx-actions">
-          <button class="btn btn-danger" onclick="deleteExpense(${e.id})">✕</button>
-        </div>
-      </li>`;
-  }).join('');
-}
-
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ─── Week navigation ──────────────────────────────────────────────────────────
-document.getElementById('prevWeek').onclick = () => {
-  currentWeekOffset--;
-  dayFilter = 'all';
-  render();
-};
-document.getElementById('nextWeek').onclick = () => {
-  if (currentWeekOffset < 0) { currentWeekOffset++; dayFilter = 'all'; render(); }
-};
-
-// ─── Keyboard shortcut: Enter to add expense ─────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && (e.target.id === 'expName' || e.target.id === 'expAmount')) {
-    addExpense();
-  }
+// ─────────────────────────────────────────────
+//  Event wiring
+// ─────────────────────────────────────────────
+document.getElementById('refresh-btn').addEventListener('click', () => {
+    clearTimeout(refreshTimer);
+    clearInterval(countdownTimer);
+    fetchFlights();
 });
 
-// ─── Shake animation ──────────────────────────────────────────────────────────
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes shake {
-    0%,100% { transform: translateX(0); }
-    20%,60% { transform: translateX(-6px); }
-    40%,80% { transform: translateX(6px); }
-  }`;
-document.head.appendChild(style);
+document.getElementById('panel-close').addEventListener('click', closePanel);
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
-render();
+// Re-filter already-loaded markers without a new API call
+document.getElementById('search').addEventListener('input', () => {
+    const states = Object.values(flightData).map(d => d.state);
+    renderFlights(states);
+});
+
+// ─────────────────────────────────────────────
+//  Boot
+// ─────────────────────────────────────────────
+initMap();
 </script>
 </body>
 </html>
